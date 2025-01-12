@@ -1,5 +1,6 @@
 import streamlit as st
 import nltk
+import csv
 from dotenv import load_dotenv
 from nltk.corpus import stopwords
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -129,12 +130,29 @@ def main():
                     agent = llm.with_structured_output(Response)
                     try:
                          response = invoke_with_retry(agent, prompt)  # Call the retry function
+                         temp={
+                             "filename":uploaded_file.name,
+                             "text":str(user_paper)[:15]
+                         }
                          if response:
                             if response.is_publishable:
+                                temp["publishable"]=1
                                 st.success("The research paper is classified as **Publishable**.")
                             else:
+                                temp["publishable"]=0
                                 st.warning("The research paper is classified as **Non-Publishable**.")
-
+                            try:
+                                csv_file = 'data.csv'
+                                file_exists = os.path.isfile(csv_file)
+                                with open(csv_file, 'a', newline='\n', encoding='utf-8') as csvfile:
+                                    writer = csv.writer(csvfile)
+                                    if not file_exists: # Write header only once if file doesn't exist
+                                        writer.writerow(["publishable", "filename", "text"])
+                                    writer.writerow([temp["publishable"], temp["filename"], temp["text"]])
+                                with open(csv_file, 'rb') as f: 
+                                    st.download_button( label="Download CSV File", data=f, file_name='data.csv', mime='text/csv' )
+                            except Exception as e:
+                                st.error(f"CSV Error: {e}")
                     except Exception as e:
                          st.error(f"Error during analysis: {e}")
 
